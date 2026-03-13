@@ -2,15 +2,6 @@
 
 A small Flask service that receives Komodo webhook alerts and forwards them as email via SMTP.
 
-## Files
-
-```text
-komodo-mail-bridge/
-├─ Dockerfile
-├─ app.py
-└─ README.md
-```
-
 ## Run
 
 ```bash
