@@ -13,23 +13,17 @@ komodo-mail-bridge/
 
 ## Published image
 
-GitHub Actions publishes the container to GHCR as `ghcr.io/<owner>/komodo-mail-bridge`.
-The `latest` tag is now explicitly published from the default branch, so this works:
+GitHub Actions publishes the container to GHCR as `ghcr.io/gevroska/komodo-mail-bridge`.
+Use the published `latest` tag directly:
 
 ```bash
-docker pull ghcr.io/<owner>/komodo-mail-bridge:latest
-```
-
-## Build
-
-```bash
-docker build -t komodo-mail-bridge:latest .
+docker pull ghcr.io/gevroska/komodo-mail-bridge:latest
 ```
 
 ## Run
 
 ```bash
-docker run --rm -p 8000:8000 --env-file .env komodo-mail-bridge:latest
+docker run --rm -p 8000:8000 --env-file .env ghcr.io/gevroska/komodo-mail-bridge:latest
 ```
 
 ## Environment variables
