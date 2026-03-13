@@ -11,6 +11,15 @@ komodo-mail-bridge/
 └─ README.md
 ```
 
+## Published image
+
+GitHub Actions publishes the container to GHCR as `ghcr.io/<owner>/komodo-mail-bridge`.
+The `latest` tag is now explicitly published from the default branch, so this works:
+
+```bash
+docker pull ghcr.io/<owner>/komodo-mail-bridge:latest
+```
+
 ## Build
 
 ```bash
