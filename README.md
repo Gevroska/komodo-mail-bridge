@@ -11,15 +11,6 @@ komodo-mail-bridge/
 └─ README.md
 ```
 
-## Published image
-
-GitHub Actions publishes the container to GHCR as `ghcr.io/gevroska/komodo-mail-bridge`.
-Use the published `latest` tag directly:
-
-```bash
-docker pull ghcr.io/gevroska/komodo-mail-bridge:latest
-```
-
 ## Run
 
 ```bash
