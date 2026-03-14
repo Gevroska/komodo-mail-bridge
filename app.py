@@ -4,6 +4,7 @@ import os
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, jsonify, request
 
@@ -14,6 +15,14 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "25"))
 FROM_ADDR = os.getenv("FROM_ADDR", "komodo@localhost")
 DEFAULT_TO = os.getenv("TO_ADDR", "")
 SUBJECT_PREFIX = os.getenv("SUBJECT_PREFIX", "[Komodo]")
+DISPLAY_TIMEZONE = os.getenv("DISPLAY_TIMEZONE", "UTC")
+
+
+def get_timezone():
+    try:
+        return ZoneInfo(DISPLAY_TIMEZONE)
+    except ZoneInfoNotFoundError:
+        return timezone.utc
 
 
 def format_ts(ts):
@@ -21,7 +30,7 @@ def format_ts(ts):
         if not ts:
             return "-"
         # Komodo timestamps appear to be in milliseconds
-        dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).astimezone()
+        dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).astimezone(get_timezone())
         return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
     except Exception:
         return str(ts)
@@ -125,6 +134,13 @@ def build_html_body(
 ):
     colors = badge_colors(level, resolved)
     status_label = "Resolved" if resolved else "Active"
+    status_badge = (
+        f"<span style=\"display:inline-block;padding:4px 10px;border-radius:999px;"
+        f"border:1px solid {colors['border']};background:{colors['bg']};color:{colors['fg']};"
+        "font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;\">"
+        f"{esc(status)}"
+        "</span>"
+    )
 
     return f"""\
 <!DOCTYPE html>
@@ -172,7 +188,7 @@ def build_html_body(
                 </tr>
                 <tr>
                   <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Status</td>
-                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;font-weight:600;">{esc(status)}</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;font-weight:600;">{status_badge}</td>
                 </tr>
                 <tr>
                   <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Level</td>
@@ -211,12 +227,14 @@ def build_html_body(
           </tr>
         </table>
 
-        <div style="margin-top:8px;font-size:14px;font-weight:700;color:#111827;">
-          Raw Payload
-        </div>
-        <div style="margin-top:8px;padding:14px 16px;background:#0f172a;color:#e5e7eb;border-radius:10px;font-family:Consolas,Monaco,monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-size:14px;font-weight:700;color:#111827;">
+            Raw Payload
+          </summary>
+          <div style="margin-top:8px;padding:14px 16px;background:#0f172a;color:#e5e7eb;border-radius:10px;font-family:Consolas,Monaco,monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
 {esc(raw_payload_pretty)}
-        </div>
+          </div>
+        </details>
       </div>
     </div>
   </div>
