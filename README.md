@@ -18,6 +18,7 @@ SMTP_PORT="25"
 FROM_ADDR=komodo@example.com
 TO_ADDR=mail@example.com
 SUBJECT_PREFIX="[Komodo]"
+DISPLAY_TIMEZONE="Europe/Paris"
 ```
 
 ## Endpoints
@@ -46,5 +47,6 @@ curl -X POST http://localhost:8000/komodo \
 ## Notes
 
 - The service sends multipart emails (plain text + HTML).
+- Timestamps are converted from UTC into `DISPLAY_TIMEZONE` (IANA format like `Europe/Paris`). Invalid values fall back to UTC.
 - If `TO_ADDR` is empty, `/komodo` returns HTTP 400.
 - SMTP send failures return HTTP 500 with the SMTP error.
