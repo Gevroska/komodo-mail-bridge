@@ -4,6 +4,7 @@ import os
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import format_datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from flask import Flask, jsonify, request
@@ -25,15 +26,21 @@ def get_timezone():
         return timezone.utc
 
 
-def format_ts(ts):
+def parse_ts(ts):
     try:
         if not ts:
-            return "-"
+            return None
         # Komodo timestamps appear to be in milliseconds
-        dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).astimezone(get_timezone())
-        return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+        return datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
     except Exception:
-        return str(ts)
+        return None
+
+
+def format_ts(ts):
+    dt = parse_ts(ts)
+    if dt is None:
+        return "-" if not ts else str(ts)
+    return dt.astimezone(get_timezone()).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def normalize_dict(value):
@@ -305,6 +312,7 @@ def komodo():
     msg["From"] = FROM_ADDR
     msg["To"] = DEFAULT_TO
     msg["Subject"] = subject
+    msg["Date"] = format_datetime(parse_ts(payload.get("ts")) or datetime.now(timezone.utc))
     msg.set_content(text_body)
     msg.add_alternative(html_body, subtype="html")
 
