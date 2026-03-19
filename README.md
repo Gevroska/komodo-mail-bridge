@@ -46,7 +46,7 @@ curl -X POST http://localhost:8000/komodo \
 
 ## Notes
 
-- The service sends multipart emails (plain text + HTML).
+- The service sends multipart emails (plain text + HTML) and sets the email `Date` header from Komodo's `ts` value when available.
 - Timestamps are converted from UTC into `DISPLAY_TIMEZONE` (IANA format like `Europe/Paris`). Invalid values fall back to UTC.
 - If `TO_ADDR` is empty, `/komodo` returns HTTP 400.
 - SMTP send failures return HTTP 500 with the SMTP error.
