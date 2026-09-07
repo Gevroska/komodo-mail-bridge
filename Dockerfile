@@ -1,9 +1,14 @@
-FROM python:3.12-alpine
+FROM rust:1.85-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo test --locked --release && cargo build --locked --release
 
-RUN pip install --no-cache-dir flask
+FROM scratch
 
-COPY app.py /app/app.py
+COPY --from=builder /build/target/release/komodo-mail-bridge /komodo-mail-bridge
 
-CMD ["python", "/app/app.py"]
+USER 65532:65532
+EXPOSE 8000
+ENTRYPOINT ["/komodo-mail-bridge"]

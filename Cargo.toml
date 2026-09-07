@@ -1,0 +1,19 @@
+[package]
+name = "komodo-mail-bridge"
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+description = "A lightweight Komodo webhook to SMTP bridge"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono-tz = "0.10"
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport"] }
+serde_json = "1"
+tiny_http = "0.12"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
