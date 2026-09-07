@@ -1,6 +1,6 @@
 # Komodo Mail Bridge
 
-A small Flask service that receives Komodo webhook alerts and forwards them as email via SMTP.
+A small Rust service that receives Komodo webhook alerts and forwards them as email via SMTP. The container is built as a single static binary in a minimal `scratch` image to keep runtime memory and image size low.
 
 ## Run
 
@@ -50,3 +50,4 @@ curl -X POST http://localhost:8000/komodo \
 - Timestamps are converted from UTC into `DISPLAY_TIMEZONE` (IANA format like `Europe/Paris`). Invalid values fall back to UTC.
 - If `TO_ADDR` is empty, `/komodo` returns HTTP 400.
 - SMTP send failures return HTTP 500 with the SMTP error.
+- SMTP behavior remains unauthenticated and unencrypted, matching the original bridge and its intended local `postfix` relay.

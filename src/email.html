@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Komodo Alert</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <div style="max-width:720px;margin:0 auto;padding:24px 16px;">
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+      <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;background:#111827;">
+        <div style="font-size:12px;line-height:1;color:#cbd5e1;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;">
+          Komodo Notification
+        </div>
+        <div style="font-size:26px;font-weight:700;line-height:1.2;color:#ffffff;">
+          {{alert_type}}
+        </div>
+        <div style="margin-top:12px;">
+          <span style="display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid {{border}};background:{{bg}};color:{{fg}};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">
+            {{status_label}}
+          </span>
+          <span style="display:inline-block;margin-left:8px;padding:6px 10px;border-radius:999px;border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">
+            {{level}}
+          </span>
+        </div>
+      </div>
+
+      <div style="padding:24px;">
+        <div style="font-size:18px;font-weight:700;color:#111827;margin-bottom:6px;">
+          {{alert_name}}
+        </div>
+        <div style="font-size:14px;color:#6b7280;margin-bottom:20px;">
+          Automated alert received from Komodo.
+        </div>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+          <tr>
+            <td style="padding:0 0 18px 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:separate;border-spacing:0;">
+                <tr>
+                  <td colspan="2" style="padding:0 0 10px 0;font-size:14px;font-weight:700;color:#111827;">
+                    Alert Details
+                  </td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Status</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;font-weight:600;"><span style="display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid {{border}};background:{{bg}};color:{{fg}};font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;">{{status}}</span></td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Level</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;">{{level}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Alert Type</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;">{{alert_type}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Name</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;">{{alert_name}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Alert ID</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;font-family:Consolas,Monaco,monospace;">{{alert_id}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Target Type</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;">{{target_type}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Target ID</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;font-family:Consolas,Monaco,monospace;">{{target_id}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Triggered</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;color:#111827;font-size:13px;">{{triggered}}</td>
+                </tr>
+                <tr>
+                  <td style="width:180px;padding:10px 12px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">Resolved</td>
+                  <td style="padding:10px 12px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;color:#111827;font-size:13px;">{{resolved_at}}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-size:14px;font-weight:700;color:#111827;">
+            Raw Payload
+          </summary>
+          <div style="margin-top:8px;padding:14px 16px;background:#0f172a;color:#e5e7eb;border-radius:10px;font-family:Consolas,Monaco,monospace;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
+{{raw_payload_pretty}}
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
