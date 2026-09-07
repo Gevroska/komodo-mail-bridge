@@ -1,0 +1,17 @@
+Komodo Alert
+
+Status      : {{status}}
+Level       : {{level}}
+Alert Type  : {{alert_type}}
+Name        : {{alert_name}}
+Alert ID    : {{alert_id}}
+
+Target Type : {{target_type}}
+Target ID   : {{target_id}}
+
+Triggered   : {{triggered}}
+Resolved    : {{resolved_at}}
+
+Raw Payload
+-----------
+{{raw_payload_pretty}}
