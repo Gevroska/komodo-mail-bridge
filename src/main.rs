@@ -394,10 +394,11 @@ mod tests {
     fn oversized_http_webhooks_are_rejected_before_smtp() {
         use std::{
             io::Write,
-            net::{TcpListener, TcpStream},
+            net::{Shutdown, TcpListener, TcpStream},
         };
 
-        for chunked in [false, true] {
+        for (chunked, headers_only) in [(false, false), (true, false), (false, true)] {
+            let keep_alive = !chunked && !headers_only;
             let relay = TcpListener::bind("127.0.0.1:0").unwrap();
             relay.set_nonblocking(true).unwrap();
             let smtp = SmtpTransport::builder_dangerous("127.0.0.1")
@@ -420,6 +421,13 @@ mod tests {
                     .unwrap()
                     .unwrap();
                 handle(request, &config, &smtp);
+                if keep_alive {
+                    let request = server
+                        .recv_timeout(Duration::from_secs(5))
+                        .unwrap()
+                        .unwrap();
+                    handle(request, &config, &smtp);
+                }
             });
             let mut client = TcpStream::connect(address).unwrap();
             client
@@ -428,31 +436,50 @@ mod tests {
             client
                 .set_write_timeout(Some(Duration::from_secs(5)))
                 .unwrap();
-            let length = MAX_JSON_BODY_BYTES + 1;
+            // An impossible length must not trigger a cleanup allocation or panic.
+            let length = if headers_only {
+                usize::MAX
+            } else {
+                MAX_JSON_BODY_BYTES + 1
+            };
             let framing = if chunked {
                 "Transfer-Encoding: chunked".to_owned()
             } else {
                 format!("Content-Length: {length}")
             };
+            let connection = if keep_alive { "keep-alive" } else { "close" };
             write!(
                 client,
-                "POST /komodo?test=1 HTTP/1.1\r\nHost: localhost\r\nContent-Type: Application/CloudEvents+Json; charset=utf-8\r\nConnection: close\r\n{framing}\r\n\r\n"
+                "POST /komodo?test=1 HTTP/1.1\r\nHost: localhost\r\nContent-Type: Application/CloudEvents+Json; charset=utf-8\r\nConnection: {connection}\r\n{framing}\r\n\r\n"
             )
             .unwrap();
             if chunked {
                 write!(client, "{length:X}\r\n").unwrap();
             }
-            let mut body = vec![b' '; length];
-            body[..2].copy_from_slice(b"{}");
-            client.write_all(&body).unwrap();
-            if chunked {
-                client.write_all(b"\r\n0\r\n\r\n").unwrap();
+            if headers_only {
+                client.shutdown(Shutdown::Write).unwrap();
+            } else {
+                let mut body = vec![b' '; length];
+                body[..2].copy_from_slice(b"{}");
+                client.write_all(&body).unwrap();
+                if chunked {
+                    client.write_all(b"\r\n0\r\n\r\n").unwrap();
+                }
+                if keep_alive {
+                    client
+                        .write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                        .unwrap();
+                }
             }
             let mut response = String::new();
             client.read_to_string(&mut response).unwrap();
             worker.join().unwrap();
             assert!(response.starts_with("HTTP/1.1 413"), "{response}");
             assert!(response.contains(JSON_BODY_TOO_LARGE), "{response}");
+            if keep_alive {
+                assert!(response.contains("HTTP/1.1 200"), "{response}");
+                assert!(response.contains("{\"ok\":true}"), "{response}");
+            }
             assert!(matches!(
                 relay.accept(),
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock
