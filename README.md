@@ -26,6 +26,10 @@ DISPLAY_TIMEZONE="Europe/Paris"
 - `GET /health` returns `{ "ok": true }`
 - `POST /komodo` accepts Komodo alert JSON and sends an email
 
+JSON request bodies are limited to **1 MiB (1,048,576 bytes)**, including
+whitespace. Larger JSON bodies return HTTP 413 without sending an email. The
+limit also applies to chunked requests whose body length is not known in advance.
+
 ## Example webhook request
 
 ```bash
