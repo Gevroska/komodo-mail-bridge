@@ -5,10 +5,13 @@ use lettre::{
     message::{Mailboxes, MultiPart, SinglePart},
 };
 use serde_json::{Value, json};
-use std::{env, error::Error, sync::Arc, thread, time::Duration};
+use std::{env, error::Error, io::Read, sync::Arc, thread, time::Duration};
 use tiny_http::{Header, Method, Request, Response, Server};
 
 type AnyError = Box<dyn Error + Send + Sync>;
+
+const MAX_JSON_BODY_BYTES: usize = 1024 * 1024;
+const JSON_BODY_TOO_LARGE: &str = "JSON body exceeds the 1 MiB limit";
 
 struct Config {
     host: String,
@@ -226,6 +229,21 @@ fn respond(request: Request, status: u16, body: Value) {
     }
 }
 
+fn read_json_body(reader: impl Read) -> Result<Value, &'static str> {
+    let mut body = Vec::new();
+    // Read one extra byte to detect excess without parsing a truncated payload.
+    let read_result = reader
+        .take(MAX_JSON_BODY_BYTES as u64 + 1)
+        .read_to_end(&mut body);
+    if body.len() > MAX_JSON_BODY_BYTES {
+        return Err(JSON_BODY_TOO_LARGE);
+    }
+    if read_result.is_err() {
+        return Ok(json!({}));
+    }
+    Ok(serde_json::from_slice(&body).unwrap_or(json!({})))
+}
+
 fn handle(mut request: Request, config: &Config, smtp: &SmtpTransport) {
     let path = request.url().split('?').next().unwrap_or("");
     match (request.method(), path) {
@@ -250,7 +268,20 @@ fn handle(mut request: Request, config: &Config, smtp: &SmtpTransport) {
                 }
             });
             let payload: Value = if is_json {
-                serde_json::from_reader(request.as_reader()).unwrap_or(json!({}))
+                if request
+                    .body_length()
+                    .is_some_and(|length| length > MAX_JSON_BODY_BYTES)
+                {
+                    respond(request, 413, json!({"error": JSON_BODY_TOO_LARGE}));
+                    return;
+                }
+                match read_json_body(request.as_reader()) {
+                    Ok(payload) => payload,
+                    Err(error) => {
+                        respond(request, 413, json!({"error": error}));
+                        return;
+                    }
+                }
             } else {
                 json!({})
             };
@@ -337,5 +368,122 @@ mod tests {
             "{{b}} <x>"
         );
         assert_eq!(escape("<>&\"'"), "&lt;&gt;&amp;&quot;&#x27;");
+    }
+
+    #[test]
+    fn json_body_limit_is_enforced_before_parsing() {
+        use std::io::Cursor;
+
+        let payload = json!({"level": "OK", "data": {"type": "Test"}});
+        let mut body = payload.to_string().into_bytes();
+        body.resize(MAX_JSON_BODY_BYTES, b' ');
+        assert_eq!(read_json_body(body.as_slice()).unwrap(), payload);
+        body.push(b' ');
+        let mut oversized = Cursor::new(body);
+        assert_eq!(read_json_body(&mut oversized), Err(JSON_BODY_TOO_LARGE));
+        assert_eq!(oversized.position(), MAX_JSON_BODY_BYTES as u64 + 1);
+
+        // Invalid JSON must not stop the size check or become an empty alert.
+        let mut malformed = Cursor::new(vec![b'!'; MAX_JSON_BODY_BYTES * 2]);
+        assert_eq!(read_json_body(&mut malformed), Err(JSON_BODY_TOO_LARGE));
+        assert_eq!(malformed.position(), MAX_JSON_BODY_BYTES as u64 + 1);
+        assert_eq!(read_json_body(&b"invalid"[..]).unwrap(), json!({}));
+    }
+
+    #[test]
+    fn oversized_http_webhooks_are_rejected_before_smtp() {
+        use std::{
+            io::Write,
+            net::{Shutdown, TcpListener, TcpStream},
+        };
+
+        for (chunked, headers_only) in [(false, false), (true, false), (false, true)] {
+            let keep_alive = !chunked && !headers_only;
+            let relay = TcpListener::bind("127.0.0.1:0").unwrap();
+            relay.set_nonblocking(true).unwrap();
+            let smtp = SmtpTransport::builder_dangerous("127.0.0.1")
+                .port(relay.local_addr().unwrap().port())
+                .timeout(Some(Duration::from_secs(1)))
+                .build();
+            let config = Config {
+                host: "127.0.0.1".into(),
+                port: relay.local_addr().unwrap().port(),
+                from: "komodo@example.com".into(),
+                to: "mail@example.com".into(),
+                prefix: "[Komodo]".into(),
+                timezone: chrono_tz::UTC,
+            };
+            let server = Server::http("127.0.0.1:0").unwrap();
+            let address = server.server_addr().to_ip().unwrap();
+            let worker = thread::spawn(move || {
+                let request = server
+                    .recv_timeout(Duration::from_secs(5))
+                    .unwrap()
+                    .unwrap();
+                handle(request, &config, &smtp);
+                if keep_alive {
+                    let request = server
+                        .recv_timeout(Duration::from_secs(5))
+                        .unwrap()
+                        .unwrap();
+                    handle(request, &config, &smtp);
+                }
+            });
+            let mut client = TcpStream::connect(address).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            client
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            // An impossible length must not trigger a cleanup allocation or panic.
+            let length = if headers_only {
+                usize::MAX
+            } else {
+                MAX_JSON_BODY_BYTES + 1
+            };
+            let framing = if chunked {
+                "Transfer-Encoding: chunked".to_owned()
+            } else {
+                format!("Content-Length: {length}")
+            };
+            let connection = if keep_alive { "keep-alive" } else { "close" };
+            write!(
+                client,
+                "POST /komodo?test=1 HTTP/1.1\r\nHost: localhost\r\nContent-Type: Application/CloudEvents+Json; charset=utf-8\r\nConnection: {connection}\r\n{framing}\r\n\r\n"
+            )
+            .unwrap();
+            if chunked {
+                write!(client, "{length:X}\r\n").unwrap();
+            }
+            if headers_only {
+                client.shutdown(Shutdown::Write).unwrap();
+            } else {
+                let mut body = vec![b' '; length];
+                body[..2].copy_from_slice(b"{}");
+                client.write_all(&body).unwrap();
+                if chunked {
+                    client.write_all(b"\r\n0\r\n\r\n").unwrap();
+                }
+                if keep_alive {
+                    client
+                        .write_all(b"GET /health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                        .unwrap();
+                }
+            }
+            let mut response = String::new();
+            client.read_to_string(&mut response).unwrap();
+            worker.join().unwrap();
+            assert!(response.starts_with("HTTP/1.1 413"), "{response}");
+            assert!(response.contains(JSON_BODY_TOO_LARGE), "{response}");
+            if keep_alive {
+                assert!(response.contains("HTTP/1.1 200"), "{response}");
+                assert!(response.contains("{\"ok\":true}"), "{response}");
+            }
+            assert!(matches!(
+                relay.accept(),
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock
+            ));
+        }
     }
 }
